@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Office Seating Arrangement Dashboard</title>
+
+  <style>
+    :root {
+      --bg-color: #f1f5f9;
+      --card-bg: #ffffff;
+      --border-color: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+
+      --vacant-bg: #f8fafc;
+      --vacant-border: #cbd5e1;
+      --agent-bg: #eff6ff;
+      --agent-border: #60a5fa;
+      --manager-bg: #fdf4ff;
+      --manager-border: #c084fc;
+      --it-bg: #ecfdf5;
+      --it-border: #34d399;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 12px;
+      background: var(--card-bg);
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .header-title h1 { font-size: 22px; font-weight: 700; }
+    .header-title p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+    .sync-note {
+      max-width: 1400px;
+      margin: 0 auto 20px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      padding: 0 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sync-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .sync-badge.loading { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+
+    .stats { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 6px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.vacant { background: #94a3b8; }
+    .dot.agent { background: #3b82f6; }
+    .dot.manager { background: #a855f7; }
+    .dot.it { background: #10b981; }
+
+    .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .save-status {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      min-width: 110px;
+      text-align: right;
+    }
+    .save-status.pending { color: #b45309; font-weight: 600; }
+    .save-status.ok { color: #059669; font-weight: 600; }
+    .save-status.err { color: #dc2626; font-weight: 600; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-save { background-color: var(--primary); color: #fff; }
+    .btn-save:hover:not(:disabled) { background-color: var(--primary-hover); }
+
+    .btn-share {
+      background-color: #0f172a;
+      color: #fff;
+    }
+    .btn-share:hover:not(:disabled) { background-color: #334155; }
+
+    .btn-secondary {
+      background-color: #f1f5f9;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover:not(:disabled) { background-color: #e2e8f0; }
+
+    .floor-grid { display: flex; flex-direction: column; gap: 28px; }
+
+    .bay-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .bay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+    .bay-header h2 { font-size: 18px; font-weight: 700; }
+    .bay-header span { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+    .workspace { display: flex; flex-direction: column; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .divider {
+      height: 14px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #94a3b8;
+      letter-spacing: 2px;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+
+    .seat {
+      background: var(--vacant-bg);
+      border: 1.5px dashed var(--vacant-border);
+      border-radius: 8px;
+      padding: 12px 10px;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .seat:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-style: solid; }
+    .seat.agent { background: var(--agent-bg); border: 1.5px solid var(--agent-border); }
+    .seat.manager { background: var(--manager-bg); border: 1.5px solid var(--manager-border); }
+    .seat.it { background: var(--it-bg); border: 1.5px solid var(--it-border); }
+    .seat.dirty { outline: 2.5px solid #f59e0b; outline-offset: 1px; }
+
+    .dirty-tag {
+      position: absolute;
+      top: -8px;
+      right: 6px;
+      background: #f59e0b;
+      color: #fff;
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .seat-top { display: flex; justify-content: space-between; align-items: center; }
+    .seat-code { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+
+    .seat-badge {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .seat.vacant .seat-badge { background: #e2e8f0; color: #64748b; }
+    .seat.agent .seat-badge { background: #dbeafe; color: #1d4ed8; }
+    .seat.manager .seat-badge { background: #f3e8ff; color: #7e22ce; }
+    .seat.it .seat-badge { background: #d1fae5; color: #047857; }
+
+    .seat-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 6px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: #ffffff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .modal.wide { max-width: 680px; }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .modal .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #334155; }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      background-color: #fff;
+      font-family: inherit;
+    }
+    .form-group input.invalid { border-color: #dc2626; background-color: #fef2f2; }
+    .field-error { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; font-weight: 500; }
+    .field-error.show { display: block; }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .btn-cancel { background: #f1f5f9; color: #334155; }
+
+    .pending-summary {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: #92400e;
+      margin-bottom: 16px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .pending-summary div { padding: 2px 0; }
+
+    .history-list { max-height: 440px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .history-entry {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: #fafafa;
+    }
+    .history-entry-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .history-saver { font-weight: 700; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px; }
+    .history-time { font-size: 12px; color: var(--text-muted); }
+    .history-changes { font-size: 12.5px; color: #334155; }
+    .history-changes div { padding: 2px 0; border-bottom: 1px dashed #e2e8f0; }
+    .history-changes div:last-child { border-bottom: none; }
+    .history-empty { color: var(--text-muted); font-size: 13.5px; padding: 24px 0; text-align: center; }
+
+    /* Manage People modal */
+    .people-section { margin-bottom: 22px; }
+    .people-section h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 10px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 5px 8px 5px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .chip.manager { background: var(--manager-bg); border-color: var(--manager-border); }
+    .chip.agent { background: var(--agent-bg); border-color: var(--agent-border); }
+    .chip.it { background: var(--it-bg); border-color: var(--it-border); }
+    .chip button.chip-remove {
+      background: rgba(15,23,42,0.08);
+      color: #0f172a;
+      border: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .chip.empty-hint { color: var(--text-muted); font-weight: 500; font-style: italic; background: none; border-style: dashed; }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { flex: 1; }
+    .add-row button { flex-shrink: 0; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      z-index: 200;
+      max-width: 380px;
+    }
+
+    .loading-screen {
+      max-width: 1400px;
+      margin: 60px auto;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>HouzeCheck India - Office Seating Arrangement (24 Seats)</h1>
+        <p>Click any desk to assign an agent or update roles. Changes publish when saved.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat-badge"><span class="dot vacant"></span> Vacant: <strong id="count-vacant">0</strong></div>
+        <div class="stat-badge"><span class="dot agent"></span> Agent: <strong id="count-agent">0</strong></div>
+        <div class="stat-badge"><span class="dot manager"></span> Manager: <strong id="count-manager">0</strong></div>
+        <div class="stat-badge"><span class="dot it"></span> IT: <strong id="count-it">0</strong></div>
+      </div>
+
+      <div class="actions">
+        <span class="save-status" id="save-status">Connecting…</span>
+        <button class="btn-share" id="share-btn" onclick="copyShareLink()">🔗 Copy Share Link</button>
+        <button class="btn-secondary" id="people-btn" onclick="openPeopleModal()" disabled>Manage People</button>
+        <button class="btn-secondary" id="history-btn" onclick="openHistoryModal()" disabled>History</button>
+        <button class="btn-secondary" id="reset-btn" onclick="resetToDefault()" disabled>Reset Layout</button>
+        <button class="btn-save" id="save-btn" onclick="openSaveModal()" disabled>Save Changes</button>
+      </div>
+    </header>
+
+    <div class="sync-note">
+      <span>This dashboard is live and synced across everyone. Draft edits remain local until you confirm your name and save.</span>
+      <span class="sync-badge" id="storage-type-badge">Connecting to Cloud…</span>
+    </div>
+
+    <div id="loading" class="loading-screen">Connecting to shared cloud seating layout…</div>
+    <div class="floor-grid" id="floor-grid" style="display:none;">
+      <div class="bay-card">
+        <div class="bay-header">
+          <h2>Bay 1</h2>
+          <span>12 Desks (Manager Assigned)</span>
+        </div>
+        <div class="workspace">
+          <div class="row" id="bay-1-side-a"></div>
+          <div class="divider">CENTRAL DIVIDER / CABLE TRAY</div>
+          <div class="row" id="bay-1-side-b"></div>
+        </div>
+      </div>
+
+      <div class="bay-card">
+        <div class="bay-header">
+          <h2>Bay 2</h2>
+          <span>12 Desks (Manager + IT Assigned)</span>
+        </div>
+        <div class="workspace">
+          <div class="row" id="bay-2-side-a"></div>
+          <div class="divider">CENTRAL DIVIDER / CABLE TRAY</div>
+          <div class="row" id="bay-2-side-b"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seat edit modal -->
+  <div class="modal-overlay" id="seat-modal">
+    <div class="modal">
+      <h3 id="modal-title">Configure Seat</h3>
+      <p class="modal-sub">Changes will remain local draft until you click "Save Changes".</p>
+      <input type="hidden" id="edit-seat-id" />
+
+      <div class="form-group">
+        <label for="seat-role">Seat Type / Role</label>
+        <select id="seat-role" onchange="handleRoleChange()">
+          <option value="vacant">Vacant (Empty Desk)</option>
+          <option value="agent">Agent</option>
+          <option value="manager">Manager</option>
+          <option value="it">IT Support</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="person-select-group">
+        <label for="seat-name-select">Select Person</label>
+        <select id="seat-name-select"></select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('seat-modal')">Cancel</button>
+        <button class="btn-save" onclick="applySeatEdit()">Apply Draft</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save confirmation modal (mandates saver name) -->
+  <div class="modal-overlay" id="save-modal">
+    <div class="modal">
+      <h3 id="save-modal-title">Save &amp; Publish Changes</h3>
+      <p class="modal-sub">Publish this update so it instantly reflects for everyone with this link.</p>
+
+      <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Summary of Changes:</label>
+      <div class="pending-summary" id="pending-summary"></div>
+
+      <div class="form-group">
+        <label for="saver-name">Your Full Name (Mandatory) <span style="color:#dc2626;">*</span></label>
+        <input type="text" id="saver-name" placeholder="e.g. Sohan Negi" autocomplete="off" />
+        <div class="field-error" id="saver-name-error">Please enter your name. It is mandatory to record who made this save in the history.</div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('save-modal')">Cancel</button>
+        <button class="btn-save" id="confirm-save-btn" onclick="confirmSave()">Confirm &amp; Publish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History modal -->
+  <div class="modal-overlay" id="history-modal">
+    <div class="modal wide">
+      <h3>Change History Log</h3>
+      <p class="modal-sub">Recorded saves in chronological order (most recent first).</p>
+      <div class="history-list" id="history-list"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('history-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage People modal -->
+  <div class="modal-overlay" id="people-modal">
+    <div class="modal wide">
+      <h3>Manage People List</h3>
+      <p class="modal-sub">Add or remove staff from role dropdowns. Changes take effect across all users once saved.</p>
+
+      <div class="people-section">
+        <h4>Managers</h4>
+        <div class="chip-row" id="chips-manager"></div>
+        <div class="add-row">
+          <input type="text" id="add-manager-input" placeholder="Add a manager name" autocomplete="off" />
+          <button class="btn-secondary" onclick="addPersonDraft('manager')">Add</button>
+        </div>
+      </div>
+
+      <div class="people-section">
+        <h4>Team / Agents</h4>
+        <div class="chip-row" id="chips-agent"></div>
+        <div class="add-row">
+          <input type="text" id="add-agent-input" placeholder="Add a team member name" autocomplete="off" />
+          <button class="btn-secondary" onclick="addPersonDraft('agent')">Add</button>
+        </div>
+      </div>
+
+      <div class="people-section">
+        <h4>IT Support</h4>
+        <div class="chip-row" id="chips-it"></div>
+        <div class="add-row">
+          <input type="text" id="add-it-input" placeholder="Add an IT person name" autocomplete="off" />
+          <button class="btn-secondary" onclick="addPersonDraft('it')">Add</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal('people-modal')">Cancel</button>
+        <button class="btn-save" onclick="openSaveModalForPeople()">Save &amp; Publish People</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Changes saved successfully!</div>
+
+  <script>
+    const HISTORY_LIMIT = 100;
+    const roleTitles = { vacant: "Vacant", agent: "Agent", manager: "Manager", it: "IT Support" };
+    let CLOUD_ROOM_ID = null;
+
+    function defaultPeople() {
+      return {
+        manager: ["Pranav Garg", "Sohan Negi"],
+        agent: [
+          "Akhilesh Sharma", "Altamash Memon", "Danish Mahfooz", "Denzal Sunny",
+          "Gareth Brown", "Gourav Kumar Khatua", "Harsh Bajpai", "Kunal Sanotra",
+          "Lakshya Tomar", "Rahul Khatri", "Sneh Supreet", "Sourav Kumar Kathua", "Surinder Singh"
+        ],
+        it: ["IT Support / Desk"]
+      };
+    }
+
+    const defaultSeats = [
+      { id: "B1-A1", bay: 1, side: "A", role: "manager", name: "Sohan Negi" },
+      { id: "B1-A2", bay: 1, side: "A", role: "vacant", name: "" },
+      { id: "B1-A3", bay: 1, side: "A", role: "vacant", name: "" },
+      { id: "B1-A4", bay: 1, side: "A", role: "vacant", name: "" },
+      { id: "B1-A5", bay: 1, side: "A", role: "vacant", name: "" },
+      { id: "B1-A6", bay: 1, side: "A", role: "vacant", name: "" },
+
+      { id: "B1-B1", bay: 1, side: "B", role: "vacant", name: "" },
+      { id: "B1-B2", bay: 1, side: "B", role: "vacant", name: "" },
+      { id: "B1-B3", bay: 1, side: "B", role: "vacant", name: "" },
+      { id: "B1-B4", bay: 1, side: "B", role: "vacant", name: "" },
+      { id: "B1-B5", bay: 1, side: "B", role: "vacant", name: "" },
+      { id: "B1-B6", bay: 1, side: "B", role: "vacant", name: "" },
+
+      { id: "B2-A1", bay: 2, side: "A", role: "manager", name: "Pranav Garg" },
+      { id: "B2-A2", bay: 2, side: "A", role: "vacant", name: "" },
+      { id: "B2-A3", bay: 2, side: "A", role: "vacant", name: "" },
+      { id: "B2-A4", bay: 2, side: "A", role: "vacant", name: "" },
+      { id: "B2-A5", bay: 2, side: "A", role: "vacant", name: "" },
+      { id: "B2-A6", bay: 2, side: "A", role: "vacant", name: "" },
+
+      { id: "B2-B1", bay: 2, side: "B", role: "it", name: "IT Support / Desk" },
+      { id: "B2-B2", bay: 2, side: "B", role: "vacant", name: "" },
+      { id: "B2-B3", bay: 2, side: "B", role: "vacant", name: "" },
+      { id: "B2-B4", bay: 2, side: "B", role: "vacant", name: "" },
+      { id: "B2-B5", bay: 2, side: "B", role: "vacant", name: "" },
+      { id: "B2-B6", bay: 2, side: "B", role: "vacant", name: "" }
+    ];
+
+    let seats = JSON.parse(JSON.stringify(defaultSeats));
+    let lastSyncedSeats = JSON.parse(JSON.stringify(defaultSeats));
+    let people = defaultPeople();
+    let peopleDraft = null;
+    let history = [];
+    let pendingAction = null;
+
+    // --- Dynamic Multi-User Cloud Engine (JSONBlob) ---
+    async function initCloudSync() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let roomId = urlParams.get("room");
+
+      if (!roomId) {
+        roomId = localStorage.getItem("last_active_cloud_room");
+      }
+
+      if (roomId) {
+        CLOUD_ROOM_ID = roomId;
+        const loaded = await loadDataFromStore();
+        if (loaded) {
+          setupActiveRoomUrl(roomId);
+          return;
+        }
+      }
+
+      // If no valid room found, create a new shared cloud database room
+      try {
+        const initialPayload = { seats: defaultSeats, history: [], people: defaultPeople() };
+        const res = await fetch("https://jsonblob.com/api/jsonBlob", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(initialPayload)
+        });
+
+        if (res.ok) {
+          const loc = res.headers.get("Location") || res.headers.get("x-jsonblob");
+          if (loc) {
+            CLOUD_ROOM_ID = loc.split("/").pop();
+            localStorage.setItem("last_active_cloud_room", CLOUD_ROOM_ID);
+            setupActiveRoomUrl(CLOUD_ROOM_ID);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not create new cloud room:", e);
+      }
+
+      if (!CLOUD_ROOM_ID) {
+        // Fallback default shared room
+        CLOUD_ROOM_ID = "houzecheck-main-room";
+      }
+      setupActiveRoomUrl(CLOUD_ROOM_ID);
+    }
+
+    function setupActiveRoomUrl(id) {
+      const url = new URL(window.location);
+      url.searchParams.set("room", id);
+      window.history.replaceState({}, "", url);
+      
+      const badge = document.getElementById("storage-type-badge");
+      badge.textContent = `🟢 Cloud Sync Active`;
+      badge.classList.remove("loading");
+    }
+
+    async function loadDataFromStore() {
+      if (!CLOUD_ROOM_ID) return false;
+      try {
+        const res = await fetch(`https://jsonblob.com/api/jsonBlob/${CLOUD_ROOM_ID}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.seats) {
+            seats = data.seats;
+            history = data.history || [];
+            people = data.people || defaultPeople();
+            lastSyncedSeats = JSON.parse(JSON.stringify(seats));
+            return true;
+          }
+        }
+      } catch (err) {}
+      return false;
+    }
+
+    async function saveDataToStore(payloadObj) {
+      if (!CLOUD_ROOM_ID) return false;
+      try {
+        const res = await fetch(`https://jsonblob.com/api/jsonBlob/${CLOUD_ROOM_ID}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payloadObj)
+        });
+        return res.ok;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    // Auto-polling every 4 seconds to sync remote changes
+    setInterval(async () => {
+      if (hasUnsavedChanges() || !CLOUD_ROOM_ID) return;
+      try {
+        const res = await fetch(`https://jsonblob.com/api/jsonBlob/${CLOUD_ROOM_ID}`, {
+          headers: { "Accept": "application/json" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.seats) {
+            const remoteStr = JSON.stringify(data.seats);
+            const currentStr = JSON.stringify(lastSyncedSeats);
+            if (remoteStr !== currentStr || (data.history && data.history.length !== history.length)) {
+              seats = JSON.parse(remoteStr);
+              lastSyncedSeats = JSON.parse(remoteStr);
+              history = data.history || [];
+              people = data.people || defaultPeople();
+              renderSeats();
+              renderHistory();
+            }
+          }
+        }
+      } catch (e) {}
+    }, 4000);
+
+    function copyShareLink() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        showToast("🔗 Link copied! Anyone with this link shares this live dashboard.");
+      }).catch(() => {
+        prompt("Copy and share this live link:", url);
+      });
+    }
+
+    // --- Diff & Seat Management ---
+    function seatLabel(seat) {
+      const title = roleTitles[seat.role] || seat.role;
+      return seat.role === "vacant" ? title : `${seat.name || "Unassigned"} (${title})`;
+    }
+
+    function diffSeats(oldSeats, newSeats) {
+      const changes = [];
+      newSeats.forEach((seat, i) => {
+        const before = oldSeats[i];
+        if (!before || before.role !== seat.role || before.name !== seat.name) {
+          changes.push(`Desk ${seat.id}: ${before ? seatLabel(before) : "—"} → ${seatLabel(seat)}`);
+        }
+      });
+      return changes;
+    }
+
+    function diffPeople(oldPeople, newPeople) {
+      const changes = [];
+      const roleLabels = { manager: "Manager", agent: "Team", it: "IT Support" };
+      ["manager", "agent", "it"].forEach(role => {
+        const before = oldPeople[role] || [];
+        const after = newPeople[role] || [];
+        after.filter(n => !before.includes(n)).forEach(n => changes.push(`Added ${n} (${roleLabels[role]})`));
+        before.filter(n => !after.includes(n)).forEach(n => changes.push(`Removed ${n} (${roleLabels[role]})`));
+      });
+      return changes;
+    }
+
+    function hasUnsavedChanges() {
+      return diffSeats(lastSyncedSeats, seats).length > 0;
+    }
+
+    function dirtySeatIds() {
+      const ids = new Set();
+      seats.forEach((seat, i) => {
+        const before = lastSyncedSeats[i];
+        if (!before || before.role !== seat.role || before.name !== seat.name) ids.add(seat.id);
+      });
+      return ids;
+    }
+
+    function renderSeats() {
+      document.getElementById("bay-1-side-a").innerHTML = "";
+      document.getElementById("bay-1-side-b").innerHTML = "";
+      document.getElementById("bay-2-side-a").innerHTML = "";
+      document.getElementById("bay-2-side-b").innerHTML = "";
+
+      let counts = { vacant: 0, agent: 0, manager: 0, it: 0 };
+      const dirty = dirtySeatIds();
+
+      seats.forEach(seat => {
+        counts[seat.role]++;
+        const card = document.createElement("div");
+        const isDirty = dirty.has(seat.id);
+        card.className = `seat ${seat.role}${isDirty ? " dirty" : ""}`;
+        card.onclick = () => openEditModal(seat.id);
+
+        const displayName = seat.role === "vacant" ? "Vacant" : (seat.name || "Unassigned");
+        const roleLabel = seat.role === "it" ? "IT" : seat.role;
+
+        card.innerHTML = `
+          ${isDirty ? '<span class="dirty-tag">Draft</span>' : ''}
+          <div class="seat-top">
+            <span class="seat-code">${seat.id}</span>
+            <span class="seat-badge">${roleLabel}</span>
+          </div>
+          <div class="seat-name" title="${displayName}">${displayName}</div>
+        `;
+
+        const containerId = `bay-${seat.bay}-side-${seat.side.toLowerCase()}`;
+        const container = document.getElementById(containerId);
+        if (container) container.appendChild(card);
+      });
+
+      document.getElementById("count-vacant").textContent = counts.vacant;
+      document.getElementById("count-agent").textContent = counts.agent;
+      document.getElementById("count-manager").textContent = counts.manager;
+      document.getElementById("count-it").textContent = counts.it;
+
+      updateSaveStatus();
+    }
+
+    function updateSaveStatus() {
+      const saveBtn = document.getElementById("save-btn");
+      if (hasUnsavedChanges()) {
+        setStatus("Unsaved changes (Draft)", "pending");
+        saveBtn.disabled = false;
+      } else {
+        setStatus("Up to date", "ok");
+        saveBtn.disabled = true;
+      }
+    }
+
+    function populateNameDropdown(role, selectedName) {
+      const select = document.getElementById("seat-name-select");
+      select.innerHTML = "";
+
+      const options = people[role] || [];
+      options.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (name === selectedName) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      if (selectedName && !options.includes(selectedName)) {
+        const opt = document.createElement("option");
+        opt.value = selectedName;
+        opt.textContent = `${selectedName} (custom / archived)`;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+
+    function openEditModal(seatId) {
+      const seat = seats.find(s => s.id === seatId);
+      if (!seat) return;
+
+      document.getElementById("edit-seat-id").value = seat.id;
+      document.getElementById("modal-title").textContent = `Configure Desk ${seat.id}`;
+      document.getElementById("seat-role").value = seat.role;
+
+      handleRoleChange(seat.name);
+      document.getElementById("seat-modal").classList.add("active");
+    }
+
+    function handleRoleChange(preferredName = "") {
+      const role = document.getElementById("seat-role").value;
+      const group = document.getElementById("person-select-group");
+
+      if (role === "vacant") {
+        group.style.display = "none";
+      } else {
+        group.style.display = "block";
+        populateNameDropdown(role, preferredName);
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    function applySeatEdit() {
+      const seatId = document.getElementById("edit-seat-id").value;
+      const role = document.getElementById("seat-role").value;
+      const nameSelect = document.getElementById("seat-name-select");
+      const name = role === "vacant" ? "" : nameSelect.value;
+
+      const seatIndex = seats.findIndex(s => s.id === seatId);
+      if (seatIndex !== -1) {
+        seats[seatIndex].role = role;
+        seats[seatIndex].name = name;
+      }
+
+      closeModal("seat-modal");
+      renderSeats();
+    }
+
+    function setStatus(text, kind) {
+      const el = document.getElementById("save-status");
+      el.textContent = text;
+      el.classList.remove("pending", "ok", "err");
+      if (kind) el.classList.add(kind);
+    }
+
+    function openSaveNameModal(title, changes, action) {
+      pendingAction = action;
+      renderPendingSummary(changes);
+      const nameInput = document.getElementById("saver-name");
+      nameInput.value = "";
+      nameInput.classList.remove("invalid");
+      document.getElementById("saver-name-error").classList.remove("show");
+      document.getElementById("save-modal-title").textContent = title;
+      document.getElementById("save-modal").classList.add("active");
+      setTimeout(() => nameInput.focus(), 50);
+    }
+
+    function openSaveModal() {
+      openSaveNameModal("Save & Publish Changes", diffSeats(lastSyncedSeats, seats), "edit");
+    }
+
+    function renderPendingSummary(changes) {
+      const box = document.getElementById("pending-summary");
+      box.innerHTML = changes.length
+        ? changes.map(c => `<div>• ${escapeHtml(c)}</div>`).join("")
+        : "<div>No changes detected.</div>";
+    }
+
+    async function confirmSave() {
+      const input = document.getElementById("saver-name");
+      const name = input.value.trim();
+      
+      if (!name) {
+        input.classList.add("invalid");
+        document.getElementById("saver-name-error").classList.add("show");
+        input.focus();
+        return;
+      }
+
+      const confirmBtn = document.getElementById("confirm-save-btn");
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Publishing to cloud…";
+
+      let changes;
+      if (pendingAction === "reset") {
+        changes = ["Layout reset to default configuration"];
+      } else if (pendingAction === "people") {
+        changes = diffPeople(people, peopleDraft);
+        people = peopleDraft;
+      } else {
+        changes = diffSeats(lastSyncedSeats, seats);
+      }
+
+      const entry = {
+        savedBy: name,
+        timestamp: new Date().toISOString(),
+        changes: changes.length ? changes : ["Saved layout update"]
+      };
+
+      const ok = await persistToStorage(entry);
+
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Confirm & Publish";
+
+      if (ok) {
+        closeModal("save-modal");
+        if (pendingAction === "people") closeModal("people-modal");
+        showToast(`Saved by ${name} — published for everyone!`);
+      } else {
+        showToast("Cloud sync failed. Please check internet connection.");
+      }
+      pendingAction = null;
+    }
+
+    async function persistToStorage(newHistoryEntry) {
+      setStatus("Publishing…", "pending");
+      try {
+        history.unshift(newHistoryEntry);
+        if (history.length > HISTORY_LIMIT) history = history.slice(0, HISTORY_LIMIT);
+
+        const payload = { seats, history, people };
+        const result = await saveDataToStore(payload);
+
+        if (result) {
+          lastSyncedSeats = JSON.parse(JSON.stringify(seats));
+          renderSeats();
+          renderHistory();
+          setStatus("Up to date", "ok");
+          return true;
+        } else {
+          history.shift();
+          setStatus("Save failed", "err");
+          return false;
+        }
+      } catch (err) {
+        history.shift();
+        setStatus("Save failed", "err");
+        return false;
+      }
+    }
+
+    function resetToDefault() {
+      if (!confirm("Are you sure you want to reset the layout back to original defaults? You must confirm your name to publish this reset.")) return;
+      seats = JSON.parse(JSON.stringify(defaultSeats));
+      renderSeats();
+      openSaveNameModal("Confirm Layout Reset", ["Reset all 24 desks to default configuration"], "reset");
+    }
+
+    function fmtTimestamp(iso) {
+      try {
+        return new Date(iso).toLocaleString(undefined, { 
+          year: 'numeric', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+      } catch (e) {
+        return iso;
+      }
+    }
+
+    function renderHistory() {
+      const list = document.getElementById("history-list");
+      if (!history || !history.length) {
+        list.innerHTML = '<div class="history-empty">No saves recorded yet. Saves will appear here.</div>';
+        return;
+      }
+      list.innerHTML = history.map(entry => `
+        <div class="history-entry">
+          <div class="history-entry-top">
+            <span class="history-saver">👤 ${escapeHtml(entry.savedBy || "Anonymous")}</span>
+            <span class="history-time">🕒 ${fmtTimestamp(entry.timestamp)}</span>
+          </div>
+          <div class="history-changes">
+            ${(entry.changes || []).map(c => `<div>${escapeHtml(c)}</div>`).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function openHistoryModal() {
+      renderHistory();
+      document.getElementById("history-modal").classList.add("active");
+    }
+
+    // --- Manage People ---
+    function openPeopleModal() {
+      peopleDraft = JSON.parse(JSON.stringify(people));
+      renderPeopleChips();
+      document.getElementById("people-modal").classList.add("active");
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderPeopleChips() {
+      ["manager", "agent", "it"].forEach(role => {
+        const row = document.getElementById(`chips-${role}`);
+        const names = peopleDraft[role] || [];
+        if (!names.length) {
+          row.innerHTML = '<span class="chip empty-hint">No staff listed</span>';
+          return;
+        }
+        row.innerHTML = names.map(name => `
+          <span class="chip ${role}">
+            ${escapeHtml(name)}
+            <button class="chip-remove" title="Remove" data-role="${role}" data-name="${escapeHtml(name)}">×</button>
+          </span>
+        `).join("");
+
+        row.querySelectorAll(".chip-remove").forEach(btn => {
+          btn.addEventListener("click", () => {
+            removePersonDraft(btn.dataset.role, btn.dataset.name);
+          });
+        });
+      });
+    }
+
+    function addPersonDraft(role) {
+      const input = document.getElementById(`add-${role}-input`);
+      const name = input.value.trim();
+      if (!name) return;
+      if (peopleDraft[role].includes(name)) {
+        input.value = "";
+        return;
+      }
+      peopleDraft[role].push(name);
+      input.value = "";
+      renderPeopleChips();
+    }
+
+    function removePersonDraft(role, name) {
+      peopleDraft[role] = peopleDraft[role].filter(n => n !== name);
+      renderPeopleChips();
+    }
+
+    function openSaveModalForPeople() {
+      const changes = diffPeople(people, peopleDraft);
+      if (!changes.length) {
+        closeModal("people-modal");
+        return;
+      }
+      openSaveNameModal("Save & Publish People List", changes, "people");
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 3500);
+    }
+
+    async function init() {
+      await initCloudSync();
+      renderSeats();
+      renderHistory();
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("floor-grid").style.display = "flex";
+      document.getElementById("history-btn").disabled = false;
+      document.getElementById("reset-btn").disabled = false;
+      document.getElementById("people-btn").disabled = false;
+      updateSaveStatus();
+    }
+
+    document.getElementById("saver-name").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") confirmSave();
+    });
+
+    init();
+  </script>
+</body>
+</html>
